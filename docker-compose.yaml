@@ -1,0 +1,35 @@
+services:
+
+  app:
+    image: python:3.13.2-alpine3.20
+    ports:
+      - "8080:5000"
+    volumes:
+      - skylab:/var/lib/skylab
+    networks:
+      - public
+      - private
+    depends_on:
+      database:
+        condition: service_healthy # Aguarda o db estar pronto
+
+  database:
+    image: postgres
+    volumes:
+      - db:/var/lib/postgres
+    networks:
+      - private
+    healthcheck:
+      test: ["executable", "arg"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    
+volumes:
+  skylab:
+  db:
+
+networks:
+  public:
+  private:
