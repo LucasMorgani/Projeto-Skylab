@@ -58,7 +58,14 @@
             </tr>
         </thead>
         <tbody>
-            <!-- Aqui os dados serão inseridos dinamicamente pelo Flask -->
+            {% for funcionario in funcionarios %}
+            <tr>
+                <td>{{ funcionario[0] }}</td>
+                <td>{{ funcionario[1] }}</td>
+                <td>{{ funcionario[2] }}</td>
+                <td>{{ funcionario[3] }}</td>
+            </tr>
+            {% endfor %}
         </tbody>
     </table>
     <button onclick="location.reload()">Atualizar Dados</button>
