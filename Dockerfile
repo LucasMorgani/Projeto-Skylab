@@ -5,6 +5,7 @@ EXPOSE 5000
 WORKDIR /skylab_app
 
 COPY app.py .
+COPY ./templates ./templates
 
 RUN pip install --no-cache-dir flask
 
