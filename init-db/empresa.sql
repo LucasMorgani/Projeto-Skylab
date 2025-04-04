@@ -23,14 +23,6 @@ CREATE TABLE Funcionario (
     FOREIGN KEY (cargo_id) REFERENCES Cargo(id) ON DELETE CASCADE,
     FOREIGN KEY (departamento_id) REFERENCES Departamento(id) ON DELETE CASCADE
 );
-
--- Criação da tabela Funcionario
-CREATE TABLE Teste (
-    id SERIAL PRIMARY KEY,
-    user VARCHAR(20) NOT NULL,
-    senha VARCHAR(20) NOT NULL;
-);
-
 -- Populando a tabela Departamento
 INSERT INTO Departamento (nome) VALUES 
 ('TI'), 
@@ -57,11 +49,6 @@ INSERT INTO Funcionario (nome, cargo_id, departamento_id) VALUES
 ('Carlos Silva', 5, 5),           -- Coordenador de Vendas, Vendas
 ('Rafael Santos', 6, 1),          -- Assistente de TI, TI
 ('Andre Luiz', 6, 1);          -- Assistente de TI, TI
-
--- Teste
-INSERT INTO Teste (nome, cargo_id, departamento_id) VALUES 
-('Lucas Morgani', 'Skylab027'),          -- Analista de Sistemas, TI
-('André Luiz', 2, 2);              -- Gerente de TI, RH
 
 -- Consultar todos os funcionários com cargos e departamentos
 SELECT f.id, f.nome, c.nome AS cargo, d.nome AS departamento
