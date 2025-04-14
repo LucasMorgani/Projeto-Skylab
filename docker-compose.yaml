@@ -1,36 +1,42 @@
 services:
-
   app:
-    build:
-      context: .
+    build: .
     ports:
       - "8080:5000"
-    volumes:
-      - skylab:/var/lib/skylab
-    networks:
-      - public
-      - private
     depends_on:
-      - database
+      database:
+        condition: service_healthy
+    networks:
+      - skylab_net
+    restart: unless-stopped
 
   database:
     image: postgres:17.4-alpine3.21
-    ports:
-      - "5432:5432"
     environment:
-      - POSTGRES_USER=docker
-      - POSTGRES_PASSWORD=docker
-      - POSTGRES_DB=Empresa
+      POSTGRES_USER: docker
+      POSTGRES_PASSWORD: docker
+      POSTGRES_DB: Empresa
+      PGDATA: /var/lib/postgresql/data/pgdata  # Linha crucial adicionada
     volumes:
+      - postgres_data:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d
-      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docker -d Empresa"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
-      - private
+      - skylab_net
+    restart: unless-stopped
 
 volumes:
-  skylab:
-  db:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./postgres-data  # Armazena dados em um diretório físico
+      o: bind
 
 networks:
-  public:
-  private:
+  skylab_net:
+    driver: bridge

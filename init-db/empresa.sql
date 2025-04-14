@@ -1,21 +1,26 @@
--- Criação do banco de dados
-CREATE DATABASE Empresa;
-\c Empresa;
+-- init-db/empresa.sql
+DO $$
+BEGIN
+    -- Criação do banco se não existir
+    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'Empresa') THEN
+        CREATE DATABASE Empresa;
+    END IF;
+END $$;
 
--- Criação da tabela Departamento
-CREATE TABLE Departamento (
+\c Empresa
+
+-- Tabelas com IF NOT EXISTS
+CREATE TABLE IF NOT EXISTS Departamento (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL UNIQUE
 );
 
--- Criação da tabela Cargo
-CREATE TABLE Cargo (
+CREATE TABLE IF NOT EXISTS Cargo (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL UNIQUE
 );
 
--- Criação da tabela Funcionario
-CREATE TABLE Funcionario (
+CREATE TABLE IF NOT EXISTS Funcionario (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(150) NOT NULL,
     cargo_id INT NOT NULL,
@@ -23,35 +28,21 @@ CREATE TABLE Funcionario (
     FOREIGN KEY (cargo_id) REFERENCES Cargo(id) ON DELETE CASCADE,
     FOREIGN KEY (departamento_id) REFERENCES Departamento(id) ON DELETE CASCADE
 );
--- Populando a tabela Departamento
+
+-- Inserções iniciais condicionais
 INSERT INTO Departamento (nome) VALUES 
 ('TI'), 
 ('RH'), 
 ('Financeiro'), 
 ('Marketing'), 
-('Vendas');
+('Vendas')
+ON CONFLICT (nome) DO NOTHING;
 
--- Populando a tabela Cargo
 INSERT INTO Cargo (nome) VALUES 
 ('Analista de Sistemas'), 
 ('Gerente de TI'), 
 ('Gerente de RH'), 
 ('Analista de Marketing'), 
 ('Coordenador de Vendas'),
-('Assistente de TI');
-
--- Populando a tabela Funcionario
-INSERT INTO Funcionario (nome, cargo_id, departamento_id) VALUES 
-('Lucas Morgani', 1, 1),          -- Analista de Sistemas, TI
-('Ana Souza', 2, 2),              -- Gerente de TI, RH
-('Marcos Pereira', 3, 1),         -- Gerente de RH, TI
-('Julia Costa', 4, 4),            -- Analista de Marketing, Marketing
-('Carlos Silva', 5, 5),           -- Coordenador de Vendas, Vendas
-('Rafael Santos', 6, 1),          -- Assistente de TI, TI
-('Andre Luiz', 6, 1);          -- Assistente de TI, TI
-
--- Consultar todos os funcionários com cargos e departamentos
-SELECT f.id, f.nome, c.nome AS cargo, d.nome AS departamento
-FROM Funcionario f
-JOIN Cargo c ON f.cargo_id = c.id
-JOIN Departamento d ON f.departamento_id = d.id;
+('Assistente de TI')
+ON CONFLICT (nome) DO NOTHING;
