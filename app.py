@@ -1,6 +1,6 @@
-# app.py
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for
 import psycopg2
+from psycopg2 import sql
 
 app = Flask(__name__)
 
@@ -13,48 +13,110 @@ DB_CONFIG = {
     "port": "5432"
 }
 
-def get_funcionarios():
-    """Recupera todos os funcionários do banco de dados com seus cargos e departamentos."""
-    conn = psycopg2.connect(**DB_CONFIG)
-    cur = conn.cursor()
-    
-    cur.execute("""
-        SELECT f.id, f.nome, c.nome AS cargo, d.nome AS departamento
-        FROM Funcionario f
-        JOIN Cargo c ON f.cargo_id = c.id
-        JOIN Departamento d ON f.departamento_id = d.id
-    """)
-    
-    funcionarios = cur.fetchall()
-    cur.close()
-    conn.close()
-    return funcionarios
+def get_db_connection():
+    """Estabelece conexão com o banco de dados."""
+    return psycopg2.connect(**DB_CONFIG)
+
+def get_funcionarios(ordem='az', busca='', coluna_busca='nome'):
+    """Recupera funcionários com filtros e ordenação."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Colunas válidas para busca
+        colunas_validas = {
+            'id': 'f.id',
+            'nome': 'f.nome',
+            'cargo': 'c.nome',
+            'departamento': 'd.nome'
+        }
+
+        # Verifica se a coluna de busca é válida
+        coluna = colunas_validas.get(coluna_busca, 'f.nome')
+
+        # Query base
+        query = sql.SQL("""
+            SELECT f.id, f.nome, c.nome AS cargo, d.nome AS departamento
+            FROM Funcionario f
+            JOIN Cargo c ON f.cargo_id = c.id
+            JOIN Departamento d ON f.departamento_id = d.id
+        """)
+
+        params = []
+        
+        # Adiciona filtro de busca se necessário
+        if busca:
+            query = sql.SQL("{query} WHERE {coluna} ILIKE %s").format(
+                query=query,
+                coluna=sql.SQL(coluna)
+            )
+            params.append(f"%{busca}%")
+
+        # Mapeamento de ordenação
+        ordem_map = {
+            'az': sql.SQL("f.nome ASC"),
+            'za': sql.SQL("f.nome DESC"),
+            'id-up': sql.SQL("f.id ASC"),
+            'id-down': sql.SQL("f.id DESC"),
+            'cargo': sql.SQL("c.nome ASC"),
+            'departamento': sql.SQL("d.nome ASC")
+        }
+        order_clause = ordem_map.get(ordem, sql.SQL("f.nome ASC"))
+
+        # Adiciona ordenação
+        query = sql.SQL("{query} ORDER BY {order}").format(
+            query=query,
+            order=order_clause
+        )
+
+        # Executa a query
+        cur.execute(query, params)
+        return cur.fetchall()
+
+    except Exception as e:
+        print(f"Erro ao buscar funcionários: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
 
 def get_cargos():
-    """Recupera todos os cargos disponíveis no banco de dados."""
-    conn = psycopg2.connect(**DB_CONFIG)
-    cur = conn.cursor()
-    cur.execute("SELECT id, nome FROM Cargo")
-    cargos = cur.fetchall()
-    cur.close()
-    conn.close()
-    return cargos
+    """Recupera todos os cargos disponíveis."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, nome FROM Cargo ORDER BY nome")
+        return cur.fetchall()
+    except Exception as e:
+        print(f"Erro ao buscar cargos: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
 
 def get_departamentos():
-    """Recupera todos os departamentos disponíveis no banco de dados."""
-    conn = psycopg2.connect(**DB_CONFIG)
-    cur = conn.cursor()
-    cur.execute("SELECT id, nome FROM Departamento")
-    departamentos = cur.fetchall()
-    cur.close()
-    conn.close()
-    return departamentos
+    """Recupera todos os departamentos disponíveis."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, nome FROM Departamento ORDER BY nome")
+        return cur.fetchall()
+    except Exception as e:
+        print(f"Erro ao buscar departamentos: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
 
 def adicionar_funcionario(nome, cargo_id, departamento_id):
     """Adiciona um novo funcionário ao banco de dados."""
-    conn = psycopg2.connect(**DB_CONFIG)
-    cur = conn.cursor()
+    conn = None
     try:
+        conn = get_db_connection()
+        cur = conn.cursor()
         cur.execute(
             "INSERT INTO Funcionario (nome, cargo_id, departamento_id) VALUES (%s, %s, %s)",
             (nome, cargo_id, departamento_id)
@@ -62,18 +124,74 @@ def adicionar_funcionario(nome, cargo_id, departamento_id):
         conn.commit()
         return True
     except Exception as e:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         print(f"Erro ao adicionar funcionário: {e}")
         return False
     finally:
-        cur.close()
-        conn.close()
+        if conn:
+            conn.close()
 
 @app.route("/")
 def homepage():
-    """Rota principal que exibe a lista de funcionários."""
-    funcionarios = get_funcionarios()
-    return render_template("homepage.html", funcionarios=funcionarios)
+    """Rota principal com suporte a filtros e busca."""
+    try:
+        # Obtém parâmetros da URL
+        ordem = request.args.get('ordem', 'az')
+        busca = request.args.get('busca', '')
+        coluna_busca = request.args.get('coluna', 'nome')
+
+        funcionarios = get_funcionarios(ordem, busca, coluna_busca)
+        
+        return render_template(
+            "homepage.html",
+            funcionarios=funcionarios,
+            ordem_atual=ordem,
+            busca_atual=busca,
+            coluna_atual=coluna_busca
+        )
+    except Exception as e:
+        print(f"Erro na página principal: {e}")
+        return render_template(
+            "homepage.html",
+            funcionarios=[],
+            ordem_atual='az',
+            busca_atual='',
+            coluna_atual='nome'
+        )
+
+@app.route("/adicionar_funcionario", methods=["GET", "POST"])
+def adicionar_funcionario_route():
+    """Rota para adicionar novo funcionário."""
+    if request.method == "POST":
+        nome = request.form.get("nome", "").strip()
+        cargo_id = request.form.get("cargo", "")
+        departamento_id = request.form.get("departamento", "")
+        
+        if not nome or not cargo_id or not departamento_id:
+            return render_template(
+                "adicionar_funcionario.html",
+                cargos=get_cargos(),
+                departamentos=get_departamentos(),
+                error="Preencha todos os campos!"
+            )
+        
+        if adicionar_funcionario(nome, cargo_id, departamento_id):
+            return redirect(url_for("homepage"))
+        else:
+            return render_template(
+                "adicionar_funcionario.html",
+                cargos=get_cargos(),
+                departamentos=get_departamentos(),
+                error="Erro ao adicionar funcionário!"
+            )
+    
+    # Se método GET, mostra o formulário
+    return render_template(
+        "adicionar_funcionario.html",
+        cargos=get_cargos(),
+        departamentos=get_departamentos()
+    )
 
 @app.route("/excluir_funcionarios", methods=["POST"])
 def excluir_funcionarios():
@@ -83,12 +201,18 @@ def excluir_funcionarios():
     if not funcionarios_ids:
         return redirect(url_for("homepage"))
     
-    conn = psycopg2.connect(**DB_CONFIG)
-    cur = conn.cursor()
-    
+    conn = None
     try:
-        # Converte strings para inteiros e cria placeholders
-        ids = [int(id) for id in funcionarios_ids]
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Converte strings para inteiros
+        ids = [int(id) for id in funcionarios_ids if id.isdigit()]
+        
+        if not ids:
+            return redirect(url_for("homepage"))
+        
+        # Cria placeholders para a query
         placeholders = ','.join(['%s'] * len(ids))
         
         cur.execute(
@@ -98,33 +222,13 @@ def excluir_funcionarios():
         conn.commit()
         return redirect(url_for("homepage"))
     except Exception as e:
-        conn.rollback()
-        return f"Erro ao excluir funcionários: {e}", 500
+        if conn:
+            conn.rollback()
+        print(f"Erro ao excluir funcionários: {e}")
+        return redirect(url_for("homepage"))
     finally:
-        cur.close()
-        conn.close()
-
-@app.route("/adicionar_funcionario", methods=["GET", "POST"])
-def adicionar_funcionario_route():
-    """Rota para adicionar novo funcionário (exibe formulário e processa submissão)."""
-    if request.method == "POST":
-        nome = request.form["nome"]
-        cargo_id = request.form["cargo"]
-        departamento_id = request.form["departamento"]
-        
-        if adicionar_funcionario(nome, cargo_id, departamento_id):
-            return redirect(url_for("homepage"))
-        else:
-            return "Erro ao adicionar funcionário", 400
-    
-    # Se método GET, mostra o formulário
-    cargos = get_cargos()
-    departamentos = get_departamentos()
-    return render_template(
-        "adicionar_funcionario.html",
-        cargos=cargos,
-        departamentos=departamentos
-    )
+        if conn:
+            conn.close()
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
