@@ -1,13 +1,18 @@
-FROM python:3.13.2-alpine3.20
+FROM python:3.11-alpine
 
-EXPOSE 5000
+WORKDIR /app
 
-WORKDIR /skylab_app
+# Dependências de build
+RUN apk add --no-cache gcc musl-dev postgresql-dev
 
-COPY app.py .
-COPY ./templates ./templates
 COPY requirements.txt .
-
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
+COPY . .
+
+# Usuário não-root
+RUN adduser -D skylab && chown -R skylab:skylab /app
+USER skylab
+
+EXPOSE 5000
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]

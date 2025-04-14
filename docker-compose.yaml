@@ -1,36 +1,41 @@
-services:
+version: '3.8'
 
+services:
   app:
-    build:
-      context: .
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
     ports:
       - "8080:5000"
-    volumes:
-      - skylab:/var/lib/skylab
-    networks:
-      - public
-      - private
     depends_on:
-      - database
+      database:
+        condition: service_healthy
+    networks:
+      - skylab-net
 
   database:
-    image: postgres:17.4-alpine3.21
-    ports:
-      - "5432:5432"
+    image: postgres:15-alpine
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    env_file:
+      - .env
     environment:
-      - POSTGRES_USER=docker
-      - POSTGRES_PASSWORD=docker
-      - POSTGRES_DB=Empresa
+      POSTGRES_PASSWORD: docker
+      POSTGRES_USER: docker
+      POSTGRES_DB: Empresa
     volumes:
+      - pg_data:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d
-      - db:/var/lib/postgresql/data
     networks:
-      - private
+      - skylab-net
 
 volumes:
-  skylab:
-  db:
+  pg_data:
 
 networks:
-  public:
-  private:
+  skylab-net:
+    driver: bridge

@@ -1,29 +1,49 @@
 -- Criação do banco de dados
 CREATE DATABASE Empresa;
+
 \c Empresa;
 
--- Criação da tabela Departamento
-CREATE TABLE Departamento (
+-- =============================================
+-- TABELAS PRINCIPAIS
+-- =============================================
+
+-- Tabela de departamentos
+CREATE TABLE IF NOT EXISTS Departamento (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL UNIQUE
 );
 
--- Criação da tabela Cargo
-CREATE TABLE Cargo (
+-- Tabela de cargos
+CREATE TABLE IF NOT EXISTS Cargo (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL UNIQUE
 );
 
--- Criação da tabela Funcionario
-CREATE TABLE Funcionario (
+-- Tabela de funcionários
+CREATE TABLE IF NOT EXISTS Funcionario (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(150) NOT NULL,
     cargo_id INT NOT NULL,
     departamento_id INT NOT NULL,
+    aprovado BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (cargo_id) REFERENCES Cargo(id) ON DELETE CASCADE,
     FOREIGN KEY (departamento_id) REFERENCES Departamento(id) ON DELETE CASCADE
 );
--- Populando a tabela Departamento
+
+-- Tabela de usuários do sistema (unificada)
+CREATE TABLE IF NOT EXISTS usuarios (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    admin BOOLEAN NOT NULL DEFAULT FALSE,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- =============================================
+-- DADOS INICIAIS
+-- =============================================
+
+-- Departamentos
 INSERT INTO Departamento (nome) VALUES 
 ('TI'), 
 ('RH'), 
@@ -31,7 +51,7 @@ INSERT INTO Departamento (nome) VALUES
 ('Marketing'), 
 ('Vendas');
 
--- Populando a tabela Cargo
+-- Cargos
 INSERT INTO Cargo (nome) VALUES 
 ('Analista de Sistemas'), 
 ('Gerente de TI'), 
@@ -40,18 +60,20 @@ INSERT INTO Cargo (nome) VALUES
 ('Coordenador de Vendas'),
 ('Assistente de TI');
 
--- Populando a tabela Funcionario
-INSERT INTO Funcionario (nome, cargo_id, departamento_id) VALUES 
-('Lucas Morgani', 1, 1),          -- Analista de Sistemas, TI
-('Ana Souza', 2, 2),              -- Gerente de TI, RH
-('Marcos Pereira', 3, 1),         -- Gerente de RH, TI
-('Julia Costa', 4, 4),            -- Analista de Marketing, Marketing
-('Carlos Silva', 5, 5),           -- Coordenador de Vendas, Vendas
-('Rafael Santos', 6, 1),          -- Assistente de TI, TI
-('Andre Luiz', 6, 1);          -- Assistente de TI, TI
+-- Funcionários
+INSERT INTO Funcionario (nome, cargo_id, departamento_id, aprovado) VALUES 
+('Lucas Morgani', 1, 1, TRUE),
+('Ana Souza', 2, 2, TRUE),
+('Marcos Pereira', 3, 1, TRUE),
+('Julia Costa', 4, 4, TRUE),
+('Carlos Silva', 5, 5, TRUE),
+('Rafael Santos', 6, 1, TRUE),
+('Andre Luiz', 6, 1, TRUE);
 
--- Consultar todos os funcionários com cargos e departamentos
-SELECT f.id, f.nome, c.nome AS cargo, d.nome AS departamento
-FROM Funcionario f
-JOIN Cargo c ON f.cargo_id = c.id
-JOIN Departamento d ON f.departamento_id = d.id;
+-- Usuário admin com senha "admin123" hasheada
+INSERT INTO usuarios (username, password, admin, ativo) VALUES (
+    'admin', 
+    '$pbkdf2-sha256$260000$N9XUyRz3p0L1UeAod7xzHA$znJmAilFZDfTxKnvXAWmmlNHFtfkGJkGmkpVbIJprIY', 
+    TRUE, 
+    TRUE
+);
