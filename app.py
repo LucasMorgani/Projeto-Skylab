@@ -1,64 +1,101 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-from werkzeug.security import generate_password_hash, check_password_hash
+# app.py
+from flask import Flask, render_template, request, redirect, url_for
 import psycopg2
-import psycopg2.extras
-from functools import wraps
-import os
-from dotenv import load_dotenv
-
-load_dotenv()  # Carrega variáveis do .env
 
 app = Flask(__name__)
-app.secret_key = os.getenv('FLASK_SECRET_KEY')  # Chave via environment
 
-# Configuração segura do DB
+# Configuração do banco de dados
 DB_CONFIG = {
-    "dbname": os.getenv('DB_NAME', 'Empresa'),
-    "user": os.getenv('DB_USER', 'docker'),
-    "password": os.getenv('DB_PASSWORD', 'docker'),
-    "host": os.getenv('DB_HOST', 'database'),
-    "port": os.getenv('DB_PORT', '5432')
+    "dbname": "Empresa",
+    "user": "docker",
+    "password": "docker",
+    "host": "database",
+    "port": "5432"
 }
 
-def get_db_connection():
-    return psycopg2.connect(**DB_CONFIG, cursor_factory=psycopg2.extras.DictCursor)
+def get_funcionarios():
+    """Recupera todos os funcionários do banco de dados com seus cargos e departamentos."""
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    
+    cur.execute("""
+        SELECT f.id, f.nome, c.nome AS cargo, d.nome AS departamento
+        FROM Funcionario f
+        JOIN Cargo c ON f.cargo_id = c.id
+        JOIN Departamento d ON f.departamento_id = d.id
+    """)
+    
+    funcionarios = cur.fetchall()
+    cur.close()
+    conn.close()
+    return funcionarios
 
-# Middlewares atualizados
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get('user'):
-            flash('Acesso não autorizado', 'error')
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
+def get_cargos():
+    """Recupera todos os cargos disponíveis no banco de dados."""
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("SELECT id, nome FROM Cargo")
+    cargos = cur.fetchall()
+    cur.close()
+    conn.close()
+    return cargos
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
+def get_departamentos():
+    """Recupera todos os departamentos disponíveis no banco de dados."""
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("SELECT id, nome FROM Departamento")
+    departamentos = cur.fetchall()
+    cur.close()
+    conn.close()
+    return departamentos
 
-        conn = get_db_connection()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT * FROM usuarios WHERE username = %s", (username,))
-                user = cur.fetchone()
+def adicionar_funcionario(nome, cargo_id, departamento_id):
+    """Adiciona um novo funcionário ao banco de dados."""
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO Funcionario (nome, cargo_id, departamento_id) VALUES (%s, %s, %s)",
+            (nome, cargo_id, departamento_id)
+        )
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        print(f"Erro ao adicionar funcionário: {e}")
+        return False
+    finally:
+        cur.close()
+        conn.close()
 
-                if user and check_password_hash(user['password'], password):
-                    if user['ativo']:
-                        session['user'] = user['username']
-                        session['admin'] = user['admin']
-                        return redirect(url_for('homepage'))
-                    flash('Conta desativada', 'error')
-                else:
-                    flash('Credenciais inválidas', 'error')
-        except Exception as e:
-            flash('Erro no sistema', 'error')
-            app.logger.error(f"Login error: {e}")
-        finally:
-            conn.close()
+@app.route("/")
+def homepage():
+    """Rota principal que exibe a lista de funcionários."""
+    funcionarios = get_funcionarios()
+    return render_template("homepage.html", funcionarios=funcionarios)
 
-    return render_template('homepage.html')
+@app.route("/adicionar_funcionario", methods=["GET", "POST"])
+def adicionar_funcionario_route():
+    """Rota para adicionar novo funcionário (exibe formulário e processa submissão)."""
+    if request.method == "POST":
+        nome = request.form["nome"]
+        cargo_id = request.form["cargo"]
+        departamento_id = request.form["departamento"]
+        
+        if adicionar_funcionario(nome, cargo_id, departamento_id):
+            return redirect(url_for("homepage"))
+        else:
+            return "Erro ao adicionar funcionário", 400
+    
+    # Se método GET, mostra o formulário
+    cargos = get_cargos()
+    departamentos = get_departamentos()
+    return render_template(
+        "adicionar_funcionario.html",
+        cargos=cargos,
+        departamentos=departamentos
+    )
 
-# ... (outras rotas mantendo a mesma estrutura segura)
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0")

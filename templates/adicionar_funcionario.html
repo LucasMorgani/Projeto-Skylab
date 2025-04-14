@@ -1,0 +1,84 @@
+<!-- templates/adicionar_funcionario.html -->
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adicionar Funcionário</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        label {
+            font-weight: bold;
+        }
+        input, select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #007BFF;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Adicionar Novo Funcionário</h2>
+        <form method="POST">
+            <label for="nome">Nome:</label>
+            <input type="text" id="nome" name="nome" required>
+            
+            <label for="cargo">Cargo:</label>
+            <select id="cargo" name="cargo" required>
+                {% for cargo in cargos %}
+                <option value="{{ cargo[0] }}">{{ cargo[1] }}</option>
+                {% endfor %}
+            </select>
+            
+            <label for="departamento">Departamento:</label>
+            <select id="departamento" name="departamento" required>
+                {% for departamento in departamentos %}
+                <option value="{{ departamento[0] }}">{{ departamento[1] }}</option>
+                {% endfor %}
+            </select>
+            
+            <button type="submit">Adicionar Funcionário</button>
+        </form>
+        <a href="{{ url_for('homepage') }}" class="back-link">← Voltar para a lista</a>
+    </div>
+</body>
+</html>

@@ -1,136 +1,64 @@
+<!-- templates/homepage.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Funcionários - Energec</title>
+    <title>Funcionários</title>
     <style>
-        :root {
-            --bg-light: #f4f4f4;
-            --bg-dark: #121212;
-            --text-light: #333;
-            --text-dark: #f5f5f5;
-            --primary: #007BFF;
-            --primary-dark: #0056b3;
-        }
-
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
+            margin: 20px;
             padding: 0;
-            background-color: var(--bg-light);
-            color: var(--text-light);
-            transition: background-color 0.3s, color 0.3s;
+            background-color: #f4f4f4;
+            text-align: center;
         }
-
-        body.dark {
-            background-color: var(--bg-dark);
-            color: var(--text-dark);
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            background-color: var(--primary);
-            color: white;
-        }
-
-        .header-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
         h2 {
-            margin: 0;
+            color: #333;
         }
-
-        .controls {
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-        }
-
-        .controls input {
-            padding: 10px;
-            border-radius: 10px;
-            border: 1px solid #ccc;
-            width: 100%;
-            max-width: 400px;
-            margin-bottom: 10px;
-        }
-
-        .btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            padding: 10px 15px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .btn:hover {
-            background: var(--primary-dark);
-        }
-
         table {
-            width: 90%;
-            margin: 0 auto 40px;
+            width: 80%;
+            margin: 20px auto;
             border-collapse: collapse;
             background: white;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.1);
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
         }
-
-        body.dark table {
-            background-color: #1e1e1e;
-        }
-
         th, td {
-            padding: 15px;
+            padding: 10px;
             border: 1px solid #ddd;
         }
-
         th {
-            background: var(--primary);
+            background: #007BFF;
             color: white;
         }
-
         tr:nth-child(even) {
             background: #f9f9f9;
         }
-
-        body.dark tr:nth-child(even) {
-            background: #2a2a2a;
+        .actions {
+            margin-top: 20px;
         }
-
-        @media (max-width: 600px) {
-            table, thead, tbody, th, td, tr {
-                font-size: 14px;
-            }
+        button, .add-btn {
+            background: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        button:hover, .add-btn:hover {
+            background: #0056b3;
         }
     </style>
 </head>
 <body>
-    <header>
-        <h2>Funcionários - Energec</h2>
-        <div class="header-buttons">
-            <button class="btn" onclick="location.href='/novo'">➕ Novo Cadastro</button>
-            <button class="btn" onclick="location.href='/aprovar'">✔️ Aprovações</button>
-            <button class="btn" onclick="toggleDarkMode()">🌙 Modo Escuro</button>
-            <button class="btn" onclick="location.href='/logout'">🔒 Sair</button>
-        </div>
-    </header>
-
-    <div class="controls">
-        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Filtrar por Nome, Cargo ou Departamento...">
+    <h2>Lista de Funcionários</h2>
+    <div class="actions">
+        <a href="{{ url_for('adicionar_funcionario_route') }}" class="add-btn">Adicionar Funcionário</a>
+        <button onclick="location.reload()">Atualizar Dados</button>
     </div>
-
-    <table id="funcionariosTable">
+    <table>
         <thead>
             <tr>
                 <th>ID</th>
@@ -150,32 +78,5 @@
             {% endfor %}
         </tbody>
     </table>
-
-    <script>
-        // Filtro na tabela
-        function filterTable() {
-            let input = document.getElementById("searchInput").value.toLowerCase();
-            let table = document.getElementById("funcionariosTable");
-            let tr = table.getElementsByTagName("tr");
-
-            for (let i = 1; i < tr.length; i++) {
-                let rowText = tr[i].textContent.toLowerCase();
-                tr[i].style.display = rowText.includes(input) ? "" : "none";
-            }
-        }
-
-        // Modo escuro com persistência
-        function toggleDarkMode() {
-            document.body.classList.toggle("dark");
-            localStorage.setItem("darkMode", document.body.classList.contains("dark"));
-        }
-
-        // Carrega preferência do tema
-        window.onload = () => {
-            if (localStorage.getItem("darkMode") === "true") {
-                document.body.classList.add("dark");
-            }
-        };
-    </script>
 </body>
 </html>
