@@ -75,6 +75,35 @@ def homepage():
     funcionarios = get_funcionarios()
     return render_template("homepage.html", funcionarios=funcionarios)
 
+@app.route("/excluir_funcionarios", methods=["POST"])
+def excluir_funcionarios():
+    """Exclui funcionários selecionados."""
+    funcionarios_ids = request.form.getlist("funcionarios_ids")
+    
+    if not funcionarios_ids:
+        return redirect(url_for("homepage"))
+    
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    
+    try:
+        # Converte strings para inteiros e cria placeholders
+        ids = [int(id) for id in funcionarios_ids]
+        placeholders = ','.join(['%s'] * len(ids))
+        
+        cur.execute(
+            f"DELETE FROM Funcionario WHERE id IN ({placeholders})",
+            ids
+        )
+        conn.commit()
+        return redirect(url_for("homepage"))
+    except Exception as e:
+        conn.rollback()
+        return f"Erro ao excluir funcionários: {e}", 500
+    finally:
+        cur.close()
+        conn.close()
+
 @app.route("/adicionar_funcionario", methods=["GET", "POST"])
 def adicionar_funcionario_route():
     """Rota para adicionar novo funcionário (exibe formulário e processa submissão)."""
