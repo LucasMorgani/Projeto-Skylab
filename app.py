@@ -148,7 +148,8 @@ def homepage():
             funcionarios=funcionarios,
             ordem_atual=ordem,
             busca_atual=busca,
-            coluna_atual=coluna_busca
+            coluna_atual=coluna_busca,
+            error=request.args.get('error')
         )
     except Exception as e:
         print(f"Erro na página principal: {e}")
@@ -157,7 +158,8 @@ def homepage():
             funcionarios=[],
             ordem_atual='az',
             busca_atual='',
-            coluna_atual='nome'
+            coluna_atual='nome',
+            error=str(e)
         )
 
 @app.route("/adicionar_funcionario", methods=["GET", "POST"])
@@ -195,7 +197,7 @@ def adicionar_funcionario_route():
 
 @app.route("/excluir_funcionarios", methods=["POST"])
 def excluir_funcionarios():
-    """Exclui funcionários selecionados."""
+    """Exclui funcionários selecionados e reordena os IDs restantes."""
     funcionarios_ids = request.form.getlist("funcionarios_ids")
     
     if not funcionarios_ids:
@@ -212,20 +214,43 @@ def excluir_funcionarios():
         if not ids:
             return redirect(url_for("homepage"))
         
-        # Cria placeholders para a query
-        placeholders = ','.join(['%s'] * len(ids))
+        # Inicia transação
+        conn.autocommit = False
         
+        # 1. Exclui os funcionários selecionados
+        placeholders = ','.join(['%s'] * len(ids))
         cur.execute(
             f"DELETE FROM Funcionario WHERE id IN ({placeholders})",
             ids
         )
+        
+        # 2. Obtém todos os IDs restantes ordenados
+        cur.execute("SELECT id FROM Funcionario ORDER BY id")
+        remaining_ids = [row[0] for row in cur.fetchall()]
+        
+        # 3. Reordena os IDs sequencialmente
+        for new_id, old_id in enumerate(remaining_ids, start=1):
+            if new_id != old_id:
+                # Atualiza o ID mantendo as referências
+                cur.execute(
+                    "UPDATE Funcionario SET id = %s WHERE id = %s",
+                    (new_id, old_id)
+                )
+        
+        # 4. Atualiza a sequência SERIAL
+        cur.execute(
+            "SELECT setval('funcionario_id_seq', COALESCE((SELECT MAX(id) FROM Funcionario), 1))"
+        )
+        
         conn.commit()
         return redirect(url_for("homepage"))
+    
     except Exception as e:
         if conn:
             conn.rollback()
-        print(f"Erro ao excluir funcionários: {e}")
-        return redirect(url_for("homepage"))
+        print(f"Erro ao excluir e reordenar funcionários: {e}")
+        return redirect(url_for("homepage", error="Erro ao excluir funcionários"))
+    
     finally:
         if conn:
             conn.close()
